@@ -6,4 +6,4 @@ TAX_THRESHOLD = 5000000
 TAX_LOWER_ITEM_PRICE = 100
 
 # Request headers
-USER_AGENT = "RSN @Skys_Inferno - AlgoTrading App"
+USER_AGENT = "AlgoTrading App - @Lee#2574 on discord"

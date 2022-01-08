@@ -46,20 +46,24 @@ class GrandExchangeClient:
         raise NotImplemented
 
     def latest_prices(self, ids: None | int | list[int] = None) -> list[Offer]:
-        """Returns all latest values from the Grand Exchange
+        """Fetches the latest values from the Grand Exchange API
+
+        Providing a specific ID fetches the latest prices within ~10seconds of the
+        last in-game buy or sell event. If no ID or a list of IDs are given then
+        a cached response is returned that contains a stale transaction of at least
+        60seconds.  
 
         Parameters
         ----------
-        ids: None | int
-            Retrieves all items if None is selected, else returns the given item ID
+        ids: None | int | list[int]
+            Fetches all items if None is selected, else returns the given item ID
+
         Returns
         -------
         list[Offer]
         """
         url = self.endpoints.latest
-
         prices = []
-        ids = [ids] if not isinstance(ids, list) else ids
 
         match ids:
             case (None | []):
@@ -68,6 +72,9 @@ class GrandExchangeClient:
                 params = {"ids": ids}
             case _:
                 params = None
+
+        # Creates a list of ids to iterate through later
+        ids = [ids] if not isinstance(ids, list) else ids
 
         r = self.send_request(url, params=params)
         contents = r.json()["data"]
