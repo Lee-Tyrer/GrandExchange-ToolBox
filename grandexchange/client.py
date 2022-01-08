@@ -13,9 +13,9 @@ from grandexchange.items import (
 class GrandExchangeClient:
     """Client to interact with the Grand Exchange API"""
 
-    def __init__(self, user_agent: str | None = None):
+    def __init__(self, headers: dict | None = None):
         """Initialises the Grand Exchange client"""
-        self.headers = {"user-agent": user_agent}
+        self.headers = {"user-agent": USER_AGENT} | (headers if headers is not None else {})
 
         self.endpoints = endpoints.Endpoints()
         self.items = GrandExchangeItems(self.mappings())
