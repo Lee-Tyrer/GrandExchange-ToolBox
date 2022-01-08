@@ -1,5 +1,6 @@
 import requests
 
+from grandexchange.constants import USER_AGENT
 from grandexchange import endpoints
 from grandexchange.items import (
     GrandExchangeItem,
