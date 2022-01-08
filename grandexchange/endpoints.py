@@ -1,4 +1,4 @@
-from toolbox.constants import BASE_URL
+from grandexchange.constants import BASE_URL
 
 
 class Endpoints:

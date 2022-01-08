@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
-from toolbox import constants
-from toolbox.items import (
+from grandexchange import constants
+from grandexchange.items import (
     Offer,
     Timeseries
 )

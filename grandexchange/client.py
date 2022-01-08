@@ -1,7 +1,7 @@
 import requests
 
-from toolbox import endpoints
-from toolbox.items import (
+from grandexchange import endpoints
+from grandexchange.items import (
     GrandExchangeItem,
     GrandExchangeItems,
     Price,

@@ -6,9 +6,9 @@ with open("README.md", mode="r") as _file:
     long_description = _file.read()
 
 setup(
-    name='grandexchange',
+    name='GrandExchange',
     version='0.1',
-    packages=["toolbox"],
+    packages=["grandexchange"],
     install_requires=[
         "requests",
         "pandas",
