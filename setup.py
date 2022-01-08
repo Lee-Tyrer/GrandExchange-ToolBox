@@ -8,7 +8,7 @@ with open("README.md", mode="r") as _file:
 setup(
     name='grandexchange',
     version='0.1',
-    packages=find_packages(where="toolbox"),
+    packages=["toolbox"],
     install_requires=[
         "requests",
         "pandas",
