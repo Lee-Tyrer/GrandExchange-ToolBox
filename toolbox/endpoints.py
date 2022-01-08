@@ -1,0 +1,18 @@
+from toolbox.constants import BASE_URL
+
+
+class Endpoints:
+    def __init__(self):
+        self.base_url = BASE_URL
+
+    @property
+    def mapping(self):
+        return f"{self.base_url}/mapping"
+
+    @property
+    def latest(self):
+        return f"{self.base_url}/latest"
+
+    @property
+    def timeseries(self):
+        return f"{self.base_url}/timeseries"
