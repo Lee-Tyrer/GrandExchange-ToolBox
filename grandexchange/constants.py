@@ -5,5 +5,8 @@ TAX_PERCENTAGE = 0.01
 TAX_THRESHOLD = 5000000
 TAX_LOWER_ITEM_PRICE = 100
 
+# Valid timesteps for time series data
+VALID_TIMESTEPS = ['5m', '1h', '6h']
+
 # Request headers
 USER_AGENT = "AlgoTrading App - @Lee#2574 on discord"

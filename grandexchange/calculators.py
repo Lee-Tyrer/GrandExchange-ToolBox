@@ -1,111 +1,115 @@
-from dataclasses import dataclass, field
+from collections import defaultdict
+from typing import Optional
 
-from grandexchange import constants
 from grandexchange.items import (
-    Offer,
-    Timeseries
+    Offer
 )
+from grandexchange.transactions import SaleTransaction
 
 
-@dataclass
-class SaleTransaction:
-    individual_price: int
-    volume: int | float
-    tax: float = field(init=False)
-    price: float = field(init=False)
+def dosage(name: str) -> int:
+    """Finds the number of doses in the potion based off the name
 
-    def __post_init__(self):
-        self.tax = self.calculate_tax()
-        self.price = self.initial_cost - self.tax
+    Parses the last three characters of the potion name to determine the number of doses
 
-    def calculate_tax(self):
-        tax = self.initial_cost * constants.TAX_PERCENTAGE
+    Parameters
+    ----------
+    name: str
+        The name of the potion to be parsed
 
-        match self.is_taxed, tax:
-            case True, tax if tax >= constants.TAX_THRESHOLD:
-                return constants.TAX_THRESHOLD
-            case False, tax:
-                return 0
-            case _:
-                return tax
-
-    @property
-    def initial_cost(self):
-        return self.individual_price * self.volume
-
-    @property
-    def is_taxed(self):
-        return True if self.individual_price >= constants.TAX_LOWER_ITEM_PRICE else False
+    Returns
+    -------
+    int:
+        The number of doses in the potion
+    """
+    match name[-3:]:
+        case "(1)":
+            dose = 1
+        case "(2)":
+            dose = 2
+        case "(3)":
+            dose = 3
+        case "(4)":
+            dose = 4
+        case _:
+            raise ValueError("The given name was not parsed as a potion")
+    return dose
 
 
 class Potions:
-    """Calculates the profit potential through decanting potions"""
+    """Calculator to identify potential profit from decanting potions"""
 
-    def __init__(self, potion: Offer):
-        self.potion: Offer = potion
-        self.doses: int = self.find_dose(potion.item.name)
-        # self.profit_calculator = ProfitCalculator()
-
-    def find_dose(self, potion_name: str) -> int:
-        """Parses the number of doses from the item name
+    def __init__(self, potions: list[Offer]):
+        """Initialises the potions being decanted and adds a dose attribute to the item
 
         Parameters
         ----------
-        potion_name: str
-            The name of the potion to be parsed
-
-        Returns
-        -------
-        int:
-            The number of doses in the potion
+        potions: list[Offer]
         """
-        match potion_name[-3:]:
-            case "(1)":
-                dose = 1
-            case "(2)":
-                dose = 2
-            case "(3)":
-                dose = 3
-            case "(4)":
-                dose = 4
-            case _:
-                raise ValueError("The given name was not parsed as a potion")
-        return dose
+        for idx, potion in enumerate(potions):
+            potions[idx].attributes[self._dose_key] = dosage(potion.item.name)
 
-    def decant(self, volume: int, potion: Offer) -> float:
+        self.potions = potions
+
+    @property
+    def _dose_key(self):
+        return 'dose'
+
+    def get_potions(self, dose: None | int):
+        if dose is None:
+            return self.potions
+        return next(potion for potion in self.potions if potion.attributes[self._dose_key] == dose)
+
+    def decant(self, volume: int, from_dose: int) -> list[SaleTransaction]:
         """Calculates the end number of potions after being decanted
 
         Parameters
         ----------
         volume: int
             Number of potions being decanted
-        potion: Offer
-            Target potion that will be decanted into
+        from_dose: int
+            The starting potion dosage to be used in the calculations
 
         Returns
         -------
-        float:
-            The number of potions that has been decanted into
+        list[SalesTransaction]:
+            A list of transaction info on the potion's value
         """
-        purchase_price = (self.potion.lowest.price + 1) * volume
+        transactions: list[SaleTransaction] = []
+        starting_potion = self.get_potions(from_dose)
 
-        dosage = self.find_dose(potion.item.name)
-        decanted_potions = (self.doses * volume) / dosage
+        for potion in self.potions:
+            dose = potion.attributes[self._dose_key]
 
-        sale_transacation = SaleTransaction(potion.highest.price, decanted_potions)
+            if dose == from_dose:
+                continue
 
-        return sale_transacation.price - purchase_price
+            vials = (from_dose * volume) / dose
+            transaction = SaleTransaction(
+                item=potion.item,
+                full_buy_price=(starting_potion.lowest.price + 1) * volume,
+                individual_sold_price=potion.highest.price + 1,
+                volume=vials
+            )
+            transactions.append(transaction)
 
-    @property
-    def lowest_per_dose_value(self) -> float:
-        return self.potion.lowest.price / self.doses
+        return transactions
 
-    @property
-    def highest_per_dose_value(self) -> float:
-        return self.potion.highest.price / self.doses
+    def lowest_per_dose_value(self) -> dict:
+        potions = defaultdict()
+        for potion in self.potions:
+            dose = potion.attributes[self._dose_key]
+            potions[dose] = potion.lowest.price / dose
 
-    def total_doses(self, volume: int):
-        return self.doses * volume
+        return potions
+
+    def highest_per_dose_value(self) -> dict:
+        potions = defaultdict()
+        for potion in self.potions:
+            dose = potion.attributes[self._dose_key]
+            potions[dose] = potion.highest.price / dose
+
+        return potions
 
 
 class HighAlchCalculator:
@@ -127,11 +131,7 @@ class CombineCalculator:
         self.final = final
 
     def combine(self, volume: int):
-        total = volume * ((self.primary.lowest.price + 1) + (self.secondary.lowest.price - 1))
-
-        sale = SaleTransaction(self.final.highest.price - 1, volume)
-
-        return sale.price - total
+        raise NotImplementedError()
 
     """
     Hilts + Godswords
@@ -145,7 +145,6 @@ class SetCalculator:
     Barrows (Dharok's)
     Justiciar
     """
-    pass
 
 
 class FlipCalculator:
@@ -161,4 +160,24 @@ class HerbCalculator:
     """
     Grimy to clean through Nardah
     """
-    pass
+    def __init__(self, grimy: Offer, clean: Offer, unfinished: Optional[Offer]):
+        self.grimy = grimy
+        self.clean = clean
+        self.unfinished = unfinished if not None else None
+
+    @property
+    def _zahurs_fee(self) -> int:
+        """Zahur charges 200gp to clean a herb, or making an unfinished potion"""
+        return 200
+
+    def _convert(self, material: Offer, product: Offer, volume: int) -> SaleTransaction:
+        buy_price = volume * material.lowest.price + 1
+        extra_cost = volume * self._zahurs_fee
+
+        return SaleTransaction(product.item, buy_price + extra_cost, product.highest.price + 1, volume)
+
+    def clean_grimy_herbs(self, volume: int):
+        return self._convert(self.grimy, self.clean, volume)
+
+    def clean_to_unfinished(self, volume: int):
+        return self._convert(self.clean, self.unfinished, volume)

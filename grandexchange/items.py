@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from dataclasses import dataclass, field
+from collections import defaultdict
 from fuzzywuzzy import fuzz
 
 
@@ -30,16 +31,16 @@ class GrandExchangeItems:
         return [item.name for item in self.items]
 
     def search_for(self, name: str, threshold: int = 90) -> list[GrandExchangeItem]:
-        """Performs fuzzy matching to return the Grand Exchange item
+        """Performs fuzzy matching to return a list of possible matching Grand Exchange items
 
-        The name and stored item name are both converted into lower case
+        The name and stored item name are first converted into lower case
 
         Parameters
         ----------
         name: str
-            Name of the item we are searching for
+            Name of the item being searched for
         threshold: int
-            Matching ratio of given name and stored item name
+            Matching ratio of given name and stored item name. Default is 90
 
         Returns
         -------
@@ -55,22 +56,35 @@ class GrandExchangeItems:
 
         return matches
 
-    def get_id(self, identity: int) -> GrandExchangeItem:
+    def get_item_by_id(self, identities: int | list[int]) -> list[GrandExchangeItem]:
         """Gets the GrandExchangeItem from the given unique ID
 
         Parameters
         ----------
-        identity: int
+        identities: int | list[int]
             Grand Exchange item unique ID
 
         Returns
         -------
         GrandExchangeItem
         """
+        identities = [identities] if isinstance(identities, int) else identities
+        return [item for item in self.items if item.id in identities]
 
-        for item in self.items:
-            if identity == item.id:
-                return item
+    def get_item_by_name(self, names: str | list[str]) -> list[GrandExchangeItem]:
+        """Gets the GrandExchangeItem from the given unique ID
+
+        Parameters
+        ----------
+        names: str | list[str]
+            Grand Exchange item unique ID
+
+        Returns
+        -------
+        list[GrandExchangeItem]
+        """
+        names = [names] if isinstance(names, str) else names
+        return [item for item in self.items if item.name in names]
 
 
 @dataclass
@@ -87,6 +101,7 @@ class Offer:
     item: GrandExchangeItem
     highest: Price
     lowest: Price
+    attributes: defaultdict = field(default_factory=defaultdict)
 
 
 @dataclass
@@ -115,42 +130,16 @@ class Timeseries:
         return fig
 
     def __post_init__(self):
-        """Creates margin field using the highest and lowest prices"""
+        """Creates a price margin field using the highest and lowest prices"""
         for high, low in zip(self.highest, self.lowest):
-            margin = high.price - low.price
-            self.margin.append(
-                Price(high.timestamp, margin)
-            )
+            profit_margin = high.price - low.price
 
-    def volume_weighted_mean(self, period: int):
-        pass
-
-    def rolling_average(self, window: int = 5):
-        """
-
-        Parameters
-        ----------
-        window: int
-            The duration of each period that the moving average will calculate
-
-        Returns
-        -------
-
-        """
-        highest = pd.DataFrame([item for item in self.highest])
-        highest.rolling = highest.price.rolling(window=window, center=False).mean()
-
-    def volatility(self):
-        pass
+            self.margin.append(Price(high.timestamp, profit_margin))
 
     @property
     def earliest_timestamp(self) -> int:
-        if (earliest := self.highest[0].timestamp) != self.lowest[0].timestamp:
-            raise ValueError("Timestamps in the high and low sample points do not match")
-        return earliest
+        return self.highest[0].timestamp
 
     @property
     def latest_timestamp(self) -> int:
-        if (latest := self.highest[-1].timestamp) != self.lowest[-1].timestamp:
-            raise ValueError("Timestamps in the high and low sample points do not match")
-        return latest
+        return self.lowest[-1].timestamp

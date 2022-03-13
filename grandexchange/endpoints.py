@@ -3,6 +3,7 @@ from grandexchange.constants import BASE_URL
 
 class Endpoints:
     def __init__(self):
+        """Contains the URL endpoints of the Grand Exchange API"""
         self.base_url = BASE_URL
 
     @property
