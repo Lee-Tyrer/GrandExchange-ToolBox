@@ -1,14 +1,13 @@
 from setuptools import setup
-from setuptools import find_packages
 
 # Load the README file
 with open("README.md", mode="r") as _file:
     long_description = _file.read()
 
 setup(
-    name='grandexchange',
+    name='GrandExchange',
     version='0.1',
-    packages=find_packages(where="toolbox"),
+    packages=["grandexchange"],
     install_requires=[
         "requests",
         "pandas",
