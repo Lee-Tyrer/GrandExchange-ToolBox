@@ -1,6 +1,6 @@
 import requests
 
-from typing import Optional
+from typing import Optional, Any
 from grandexchange.constants import VALID_TIMESTEPS
 
 from grandexchange.exceptions import MalformedResponseError
@@ -20,8 +20,10 @@ class GrandExchangeClient:
     def __init__(self, user_agent: str, **request_headers):
         """Initialises the Grand Exchange client"""
         self._headers = {"user-agent": user_agent, **request_headers}
-        self._endpoints = endpoints.Endpoints()
-        self.items = GrandExchangeItems(self._mapping())
+        self._endpoints = endpoints.URL()
+        self.items = GrandExchangeItems(items=self._mapping())
+
+        self._cache = None
 
     def send_request(self, url: str, params: dict = None) -> requests.Response:
         """Sends the request to the API endpoint
@@ -45,7 +47,7 @@ class GrandExchangeClient:
 
         return r
 
-    def latest_prices(self, names: Optional[str | list[str]] | None = None) -> list[Offer]:
+    def get_current_prices(self, names: Optional[str | list[str]] | None = None) -> list[Offer]:
         """Fetches the latest prices of an item from the Grand Exchange API
 
         Providing a specific ID fetches the latest prices from the Grand Exchange API
@@ -66,13 +68,16 @@ class GrandExchangeClient:
         list[Offer]
         """
         prices = []
-        items = self.items.get_item_by_name(names) if names is not None else []
 
-        # Send the request to the endpoint
         r = self.send_request(self._endpoints.latest)
         contents = r.json()["data"]
 
-        # Parse the response to include the item name in the data structure
+        names = [names] if isinstance(names, str) else names
+        if names is not None:
+            ids = [item.id for item in self.items.items if item.name in names]
+        else:
+            ids = [item.id for item in self.items.items]
+
         # Item ID from the API is returned as a string and needs to be converted to integer before filtering
         # the data into an Offer dataclass
         for identity, values in contents.items():
@@ -82,7 +87,7 @@ class GrandExchangeClient:
                 raise err
 
             # Checks whether the item list is None to return all prices, or selectively returns the inputted items
-            if identity not in [item.id for item in items] and items:
+            if identity not in ids:
                 continue
 
             match values:
@@ -123,7 +128,7 @@ class GrandExchangeClient:
             raise ValueError(f"timestep must be in {VALID_TIMESTEPS}")
 
         item = self.items.get_item_by_name(name)
-        timeseries = Timeseries(item)
+        timeseries = Timeseries(item=item)
 
         r = self.send_request(url=self._endpoints.timeseries, params={"id": item.id, "timestep": timestep})
         contents = r.json()["data"]
@@ -135,12 +140,8 @@ class GrandExchangeClient:
                     'avgHighPrice': high_price, 'highPriceVolume': high_volume,
                     'avgLowPrice': low_price, 'lowPriceVolume': low_volume
                 }:
-                    timeseries.highest.append(
-                        Price(timestamp, high_price, high_volume)
-                    )
-                    timeseries.lowest.append(
-                        Price(timestamp, low_price, low_volume)
-                    )
+                    timeseries.highest.append(Price(timestamp=timestamp, price=high_price, volume=high_volume))
+                    timeseries.lowest.append(Price(timestamp=timestamp, price=low_price, volume=low_volume))
 
         return timeseries
 
@@ -163,4 +164,3 @@ class GrandExchangeClient:
             )
 
         return mappings
-

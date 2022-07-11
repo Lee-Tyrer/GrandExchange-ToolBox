@@ -1,24 +1,22 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 from collections import defaultdict
+from functools import cached_property
 from fuzzywuzzy import fuzz
 
 
-@dataclass
-class GrandExchangeItem:
+class GrandExchangeItem(BaseModel):
     """Contains the name and identity of the Grand Exchange item"""
     name: str
     id: int
     value: int
-    highalch: int = None
-    lowalch: int = None
+    high_alch: int = Field(None, alias='highalch')
+    low_alch: int = Field(None, alias='lowalch')
     limit: int = None
 
 
-@dataclass
-class GrandExchangeItems:
+class GrandExchangeItems(BaseModel):
     items: list[GrandExchangeItem]
 
     def item_names(self) -> list[str]:
@@ -50,96 +48,90 @@ class GrandExchangeItems:
 
         for item in self.items:
             ratio = fuzz.ratio(item.name.lower(), name.lower())
-
             if ratio >= threshold:
                 matches.append(item)
 
         return matches
 
-    def get_item_by_id(self, identities: int | list[int]) -> list[GrandExchangeItem]:
+    def get_item_by_id(self, identity: int) -> GrandExchangeItem | None:
         """Gets the GrandExchangeItem from the given unique ID
 
         Parameters
         ----------
-        identities: int | list[int]
+        identity: int
             Grand Exchange item unique ID
 
         Returns
         -------
         GrandExchangeItem
         """
-        identities = [identities] if isinstance(identities, int) else identities
-        return [item for item in self.items if item.id in identities]
+        return next(iter(item for item in self.items if item.id == identity), None)
 
-    def get_item_by_name(self, names: str | list[str]) -> list[GrandExchangeItem]:
-        """Gets the GrandExchangeItem from the given unique ID
+    def get_item_by_name(self, name: str) -> GrandExchangeItem:
+        """Gets the GrandExchangeItem from the given name
 
         Parameters
         ----------
-        names: str | list[str]
+        name: str
+            Grand Exchange item unique ID
+
+        Returns
+        -------
+        GrandExchangeItem
+        """
+        return next(iter(item for item in self.items if item.name == name), None)
+
+    def get_item_by_names(self, names: list[str]) -> list[GrandExchangeItem]:
+        """Gets the GrandExchangeItem from the given names
+
+        Parameters
+        ----------
+        names: list[str]
             Grand Exchange item unique ID
 
         Returns
         -------
         list[GrandExchangeItem]
         """
-        names = [names] if isinstance(names, str) else names
         return [item for item in self.items if item.name in names]
 
 
-@dataclass
-class Price:
+class Price(BaseModel):
     """Lowest dataclass object that contains pricing data at individual timestamps"""
     timestamp: int
-    price: int
-    volume: int = field(default=None)
+    price: int | None
+    volume: int | None = None
 
 
-@dataclass
-class Offer:
+class Offer(BaseModel):
     """Utilises the Price dataclass to provide additional detail on the Item"""
     item: GrandExchangeItem
     highest: Price
     lowest: Price
-    attributes: defaultdict = field(default_factory=defaultdict)
+    attributes: defaultdict = Field(default_factory=defaultdict)
 
 
-@dataclass
-class Timeseries:
+class Timeseries(BaseModel):
     """"""
     item: GrandExchangeItem
-    highest: list[Price] = field(default_factory=list)
-    lowest: list[Price] = field(default_factory=list)
-    margin: list[Price] = field(default_factory=list, init=False)
-
-    def plot_highest(self) -> plt.Figure:
-        return self._plot_prices(self.highest)
-
-    def plot_lowest(self) -> plt.Figure:
-        return self._plot_prices(self.lowest)
-
-    def plot_margin(self) -> plt.Figure:
-        return self._plot_prices(self.margin)
-
-    @staticmethod
-    def _plot_prices(price: list[Price]) -> plt.Figure:
-        ts = pd.DataFrame(price)
-        fig = plt.figure()
-        fig.plot(ts.timestamp, ts.price)
-
-        return fig
-
-    def __post_init__(self):
-        """Creates a price margin field using the highest and lowest prices"""
-        for high, low in zip(self.highest, self.lowest):
-            profit_margin = high.price - low.price
-
-            self.margin.append(Price(high.timestamp, profit_margin))
+    highest: list[Price] = Field(default_factory=list)
+    lowest: list[Price] = Field(default_factory=list)
 
     @property
-    def earliest_timestamp(self) -> int:
-        return self.highest[0].timestamp
+    def highest_price_array(self):
+        return np.array([x.price for x in self.highest], dtype=np.float)
 
     @property
-    def latest_timestamp(self) -> int:
-        return self.lowest[-1].timestamp
+    def lowest_price_array(self):
+        return np.array([x.price for x in self.lowest], dtype=np.float)
+
+    @property
+    def highest_timestamp_array(self):
+        return np.array([x.timestamp for x in self.highest], dtype=np.float)
+
+    @property
+    def lowest_timestamp_array(self):
+        return np.array([x.timestamp for x in self.lowest], dtype=np.float)
+
+    def as_offers(self) -> list[Offer]:
+        return [Offer(item=self.item, highest=high, lowest=low) for high, low in zip(self.highest, self.lowest)]
