@@ -1,5 +1,4 @@
 from setuptools import setup
-from setuptools import find_packages
 
 # Load the README file
 with open("README.md", mode="r") as _file:

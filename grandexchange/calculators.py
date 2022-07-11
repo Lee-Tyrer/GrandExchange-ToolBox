@@ -1,164 +1,188 @@
-from dataclasses import dataclass, field
-
-from grandexchange import constants
-from grandexchange.items import (
-    Offer,
-    Timeseries
-)
+from grandexchange.items import Offer
+from grandexchange.constants import SAWMILL_COSTS, PLANK_MAKE_COSTS
+from grandexchange.transactions import SaleTransaction
+from grandexchange.exceptions import ItemNotFoundError
 
 
-@dataclass
-class SaleTransaction:
-    individual_price: int
-    volume: int | float
-    tax: float = field(init=False)
-    price: float = field(init=False)
+def dosage(name: str) -> int:
+    """Finds the number of doses in the potion based off the name
 
-    def __post_init__(self):
-        self.tax = self.calculate_tax()
-        self.price = self.initial_cost - self.tax
+    Parses the last three characters of the potion name to determine the number of doses
 
-    def calculate_tax(self):
-        tax = self.initial_cost * constants.TAX_PERCENTAGE
+    Parameters
+    ----------
+    name: str
+        The name of the potion to be parsed
 
-        match self.is_taxed, tax:
-            case True, tax if tax >= constants.TAX_THRESHOLD:
-                return constants.TAX_THRESHOLD
-            case False, tax:
-                return 0
-            case _:
-                return tax
-
-    @property
-    def initial_cost(self):
-        return self.individual_price * self.volume
-
-    @property
-    def is_taxed(self):
-        return True if self.individual_price >= constants.TAX_LOWER_ITEM_PRICE else False
-
-
-class Potions:
-    """Calculates the profit potential through decanting potions"""
-
-    def __init__(self, potion: Offer):
-        self.potion: Offer = potion
-        self.doses: int = self.find_dose(potion.item.name)
-        # self.profit_calculator = ProfitCalculator()
-
-    def find_dose(self, potion_name: str) -> int:
-        """Parses the number of doses from the item name
-
-        Parameters
-        ----------
-        potion_name: str
-            The name of the potion to be parsed
-
-        Returns
-        -------
-        int:
-            The number of doses in the potion
-        """
-        match potion_name[-3:]:
-            case "(1)":
-                dose = 1
-            case "(2)":
-                dose = 2
-            case "(3)":
-                dose = 3
-            case "(4)":
-                dose = 4
-            case _:
-                raise ValueError("The given name was not parsed as a potion")
-        return dose
-
-    def decant(self, volume: int, potion: Offer) -> float:
-        """Calculates the end number of potions after being decanted
-
-        Parameters
-        ----------
-        volume: int
-            Number of potions being decanted
-        potion: Offer
-            Target potion that will be decanted into
-
-        Returns
-        -------
-        float:
-            The number of potions that has been decanted into
-        """
-        purchase_price = (self.potion.lowest.price + 1) * volume
-
-        dosage = self.find_dose(potion.item.name)
-        decanted_potions = (self.doses * volume) / dosage
-
-        sale_transacation = SaleTransaction(potion.highest.price, decanted_potions)
-
-        return sale_transacation.price - purchase_price
-
-    @property
-    def lowest_per_dose_value(self) -> float:
-        return self.potion.lowest.price / self.doses
-
-    @property
-    def highest_per_dose_value(self) -> float:
-        return self.potion.highest.price / self.doses
-
-    def total_doses(self, volume: int):
-        return self.doses * volume
-
-
-class HighAlchCalculator:
-    pass
-
-
-class CrushCalculator:
+    Returns
+    -------
+    int:
+        The number of doses in the potion
     """
-    Bird's nest
-    Superior dragon bones
+    match name[-3:]:
+        case "(1)":
+            dose = 1
+        case "(2)":
+            dose = 2
+        case "(3)":
+            dose = 3
+        case "(4)":
+            dose = 4
+        case _:
+            raise ValueError("The given name was not parsed as a potion")
+    return dose
+
+
+def decant(potions: list[Offer], starting_dose: int, volume: int) -> list[SaleTransaction]:
+    """Calculates the end number of potions after being decanted
+
+    Parameters
+    ----------
+    potions: list[Offer]
+        A list of the potions that will be decanted
+    starting_dose: int
+        The starting potion dosage to be used in the calculations
+    volume: int
+        Number of potions being decanted
+
+    Returns
+    -------
+    list[SalesTransaction]:
+        A list of transaction info on the potion's value
     """
-    pass
+    transactions = []
+    sips = starting_dose * volume
+
+    for index, potion in enumerate(potions):
+        if (dose := dosage(potion.item.name)) == starting_dose:
+            starting_potion = potions[index]
+        potions[index].attributes['dose'] = dose
+
+    for potion in potions:
+        if (dose := potion.attributes['dose']) != starting_dose:
+            transactions.append(SaleTransaction(
+                item=potion.item,
+                full_buy_price=(starting_potion.lowest.price + 1) * volume,
+                individual_sold_price=potion.highest.price - 1,
+                volume=sips / dose
+            ))
+
+    return transactions
 
 
-class CombineCalculator:
-    def __init__(self, primary: Offer, secondary: Offer, final: Offer):
-        self.primary = primary
-        self.secondary = secondary
-        self.final = final
+def high_alchemy(nature_rune: Offer, alchable: Offer, volume: int = 1) -> float:
+    """Calculates the profit of casting high alchemy on the item
 
-    def combine(self, volume: int):
-        total = volume * ((self.primary.lowest.price + 1) + (self.secondary.lowest.price - 1))
+    Parameters
+    ----------
+    nature_rune: Offer
+        GrandExchange item for a nature rune
+    alchable: Offer
+        Item to be alched
+    volume: int
 
-        sale = SaleTransaction(self.final.highest.price - 1, volume)
-
-        return sale.price - total
-
+    Returns
+    -------
+    float
     """
-    Hilts + Godswords
-    Dragonfire wards
-    """
-    pass
+    cost = volume * (nature_rune.lowest.price + 1 + alchable.lowest.price + 1)
+    high_alch_return = volume * alchable.item.high_alch
+    return cost - high_alch_return
 
 
-class SetCalculator:
+def combiner(parts: list[Offer], product: Offer, volume: int = 1) -> SaleTransaction:
+    """Calculates the total profit from combining the items into the final product.
+
+    Examples include Barrows, Godswords, Dragonfire shields.
+
+    Parameters
+    ----------
+    parts: list[Offer]
+        All required items needed to create the product
+    product: Offer
+        The end product made after combining the items
+    volume: int
+
+    Returns
+    -------
+    SaleTransaction
     """
-    Barrows (Dharok's)
-    Justiciar
-    """
-    pass
+    cost = [volume * (part.lowest.price + 1) for part in parts]
+    return SaleTransaction(
+        item=product.item,
+        full_buy_price=cost,
+        individual_sold_price=product.highest.price + 1,
+        volume=volume
+    )
 
 
-class FlipCalculator:
+def flip(item: Offer, volume: int = 1) -> SaleTransaction:
+    """Calculates the profit from buying at the lowest price and selling at the highest
+
+    Parameters
+    ----------
+    item: GrandExchange Offer
+    volume: int
+
+    Returns
+    -------
+    SaleTransaction
     """
-    Ranarr seeds
-    Snapdragon seeds
-    Zulrah's scales
-    Death rune
-    """
+    return SaleTransaction(
+        item=item.item,
+        full_buy_price=item.highest.price,
+        individual_sold_price=item.lowest.price,
+        volume=volume
+    )
 
 
-class HerbCalculator:
+ZAHURS_FEE = 200
+WESLEYS_FEE = 50
+
+
+def transform(material: Offer, product: Offer, volume: int, fee: int = 0) -> SaleTransaction:
+    """Calculates the profit from converting an item to another product, for example, cleaning herbs
+
+    Parameters
+    ----------
+    material: Offer
+        Initial item needed to be bought
+    product: Offer
+        The finished product of the material
+    volume: int
+    fee: int
+        The fee required to pay for the conversion
+
+    Returns
+    -------
+    SaleTransaction
     """
-    Grimy to clean through Nardah
-    """
-    pass
+    cost = volume * (material.lowest.price + 1)
+    fees = volume * fee
+
+    return SaleTransaction(
+        item=product.item,
+        full_buy_price=cost + fees,
+        individual_sold_price=product.highest.price - 1,
+        volume=volume
+    )
+
+
+def create_planks(log: Offer, plank: Offer, volume: int,
+                  method: SAWMILL_COSTS | PLANK_MAKE_COSTS = SAWMILL_COSTS) -> SaleTransaction:
+    try:
+        return transform(log, plank, volume, method[log.item.name])
+    except KeyError:
+        raise ItemNotFoundError(log.item, method.values())
+
+
+def clean_herbs(grimy: Offer, clean: Offer, volume: int) -> SaleTransaction:
+    return transform(grimy, clean, volume, ZAHURS_FEE)
+
+
+def create_unfinished(herb: Offer, unfinished: Offer, volume: int) -> SaleTransaction:
+    return transform(herb, unfinished, volume, ZAHURS_FEE)
+
+
+def crush(material: Offer, product: Offer, volume: int) -> SaleTransaction:
+    return transform(material, product, volume, WESLEYS_FEE)
