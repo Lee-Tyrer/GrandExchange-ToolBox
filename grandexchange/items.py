@@ -1,8 +1,8 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from pydantic import BaseModel, Field
 from collections import defaultdict
-from functools import cached_property
 from fuzzywuzzy import fuzz
 
 
@@ -135,3 +135,18 @@ class Timeseries(BaseModel):
 
     def as_offers(self) -> list[Offer]:
         return [Offer(item=self.item, highest=high, lowest=low) for high, low in zip(self.highest, self.lowest)]
+
+
+def plot_prices(timeseries: Timeseries):
+    x = [p.timestamp for p in timeseries.highest]
+    high = [i.price for i in timeseries.highest]
+    low = [i.price for i in timeseries.lowest]
+
+    plt.plot(x, low, label="High price")
+    plt.plot(x, high, label="Low price")
+    plt.title(f"Time series from {min(x)} to {max(x)}")
+    plt.xlabel("Timestamps")
+    plt.ylabel("Price (gp)")
+    plt.show()
+
+def plot_volume(prices: list[Price])
