@@ -5,12 +5,12 @@ with open("README.md", mode="r") as _file:
     long_description = _file.read()
 
 setup(
-    name='GrandExchange',
-    version='0.1',
+    name='GrandExchangeToolbox',
+    version='0.1.1',
     packages=["grandexchange"],
     install_requires=[
         "requests",
-        "pandas",
+        "numpy",
         "fuzzywuzzy",
         "matplotlib",
     ],

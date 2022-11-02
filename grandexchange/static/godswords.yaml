@@ -1,0 +1,19 @@
+pieces:
+  "Godsword shards 1 & 2"
+  "Godsword shard 3"
+types:
+  saradomin:
+    hilt: "Saradomin hilt"
+    sword: "Saradomin godsword"
+  zamorak:
+    hilt: "Zamorak hilt"
+    sword: "Zamorak godsword"
+  bandos:
+    hilt: "Bandos hilt"
+    sword: "Bandos godsword"
+  armadyl:
+    hilt: "Armadyl hilt"
+    sword: "Armadyl godsword"
+  ancient:
+    hilt: "Ancient hilt"
+    sword: "Ancient godsword"
