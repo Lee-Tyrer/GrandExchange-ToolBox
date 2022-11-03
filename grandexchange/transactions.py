@@ -1,10 +1,12 @@
-from typing import Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, validator
 
 from grandexchange import constants
 from grandexchange.items import GrandExchangeItem
 
+from functools import total_ordering
 
+
+@total_ordering
 class SaleTransaction(BaseModel):
     item: GrandExchangeItem
     full_buy_price: int
@@ -12,6 +14,19 @@ class SaleTransaction(BaseModel):
     volume: int | float
     tax: float = None
     profit: float = None
+
+    def _is_valid_operand(self, other):
+        return hasattr(other, "profit")
+
+    def __lt__(self, other):
+        if not self._is_valid_operand(other):
+            raise ValueError()
+        return self.profit < other.profit
+
+    def __eq__(self, other):
+        if not self._is_valid_operand(other):
+            raise ValueError()
+        return self.profit == other.profit
 
     @validator('full_buy_price', 'individual_sold_price', 'volume', pre=True)
     def value_is_above_zero(cls, value):
@@ -21,12 +36,13 @@ class SaleTransaction(BaseModel):
 
     @validator('tax', always=True)
     def set_tax(cls, v, values) -> float:
-        return calculate_tax(values['individual_sold_price'], values['volume'])
+        return round(calculate_tax(values['individual_sold_price'], values['volume']), 0)
 
     @validator('profit', always=True)
     def set_profit(cls, v, values) -> float:
-        return (values['individual_sold_price'] * values['volume']
-                - values['tax'] - values['full_buy_price'])
+        sell_price = values["individual_sold_price"] * values["volume"]
+        buy_price = values["full_buy_price"] * values["volume"]
+        return sell_price - buy_price - values["tax"]
 
 
 def price_below_tax_threshold(price: float) -> bool:
