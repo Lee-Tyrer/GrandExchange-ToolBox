@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # Load the README file
 with open("README.md", mode="r") as _file:
@@ -6,13 +6,15 @@ with open("README.md", mode="r") as _file:
 
 setup(
     name='GrandExchangeToolbox',
-    version='0.1.1',
-    packages=["grandexchange"],
+    version='0.1.4',
+    packages=find_packages(),
     install_requires=[
         "requests",
         "numpy",
         "fuzzywuzzy",
         "matplotlib",
+        "pyyaml",
+        "pydantic",
     ],
     url='https://github.com/Lee-Tyrer/GrandExchange-ToolBox',
     license='',
