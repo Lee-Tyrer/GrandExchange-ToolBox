@@ -1,18 +1,20 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # Load the README file
 with open("README.md", mode="r") as _file:
     long_description = _file.read()
 
 setup(
-    name='GrandExchange',
+    name='GrandExchangeToolbox',
     version='0.1',
-    packages=["grandexchange"],
+    packages=find_packages(),
     install_requires=[
         "requests",
-        "pandas",
+        "numpy",
         "fuzzywuzzy",
         "matplotlib",
+        "pyyaml",
+        "pydantic",
     ],
     url='https://github.com/Lee-Tyrer/GrandExchange-ToolBox',
     license='',
@@ -21,4 +23,5 @@ setup(
     description='A package to interact with the Grand Exchange',
     long_description=long_description,
     long_description_content_type="text/markdown",
+    package_data={"grandexchange": ["static/*.yaml"]}
 )
