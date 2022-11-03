@@ -6,7 +6,7 @@ with open("README.md", mode="r") as _file:
 
 setup(
     name='GrandExchangeToolbox',
-    version='0.1.4',
+    version='0.1',
     packages=find_packages(),
     install_requires=[
         "requests",
@@ -23,4 +23,5 @@ setup(
     description='A package to interact with the Grand Exchange',
     long_description=long_description,
     long_description_content_type="text/markdown",
+    package_data={"grandexchange": ["static/*.yaml"]}
 )
