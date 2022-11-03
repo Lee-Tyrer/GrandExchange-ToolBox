@@ -45,3 +45,39 @@ class InvalidItemError(Exception):
 
     def __post_init__(self):
         super().__init__(self.message)
+
+
+@dataclass
+class IncorrectItemProvidedError(Exception):
+    item: str
+
+    @property
+    def message(self):
+        return f"Incorrect item provided to function"
+
+    def __post_init__(self):
+        super().__init__(self.message)
+
+
+@dataclass
+class InvalidLevelError(Exception):
+    level: int
+
+    @property
+    def message(self):
+        return f"Invalid level {self.level} was provided, must be between 1 and 120."
+
+    def __post_init__(self):
+        super().__init__(self.message)
+
+
+@dataclass
+class PriceNotAvailableError(Exception):
+    item: GrandExchangeItem
+
+    @property
+    def message(self):
+        return f"{self.item.name} had no available price"
+
+    def __post_init__(self):
+        super().__init__(self.message)

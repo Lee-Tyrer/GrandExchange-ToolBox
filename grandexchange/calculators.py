@@ -1,7 +1,15 @@
-from grandexchange.items import Offer
-from grandexchange.constants import SAWMILL_COSTS, PLANK_MAKE_COSTS
+import functools
+import inspect
+
+from grandexchange.items import Offer, Timeseries, ItemSet, Barrows, Price
+from grandexchange.constants import SAWMILL_COSTS, PLANK_MAKE_COSTS, REPAIR_BARROWS_COSTS
 from grandexchange.transactions import SaleTransaction
-from grandexchange.exceptions import ItemNotFoundError
+from grandexchange.exceptions import (
+    ItemNotFoundError,
+    IncorrectItemProvidedError,
+    InvalidLevelError,
+    PriceNotAvailableError
+)
 
 
 def dosage(name: str) -> int:
@@ -12,7 +20,8 @@ def dosage(name: str) -> int:
     Parameters
     ----------
     name: str
-        The name of the potion to be parsed
+        The name of the potion to be parsed. It must contain the ending dosage of the
+        potion otherwise an error will be raised.
 
     Returns
     -------
@@ -87,13 +96,13 @@ def high_alchemy(nature_rune: Offer, alchable: Offer, volume: int = 1) -> float:
     """
     cost = volume * (nature_rune.lowest.price + 1 + alchable.lowest.price + 1)
     high_alch_return = volume * alchable.item.high_alch
-    return cost - high_alch_return
+    return high_alch_return - cost
 
 
 def combiner(parts: list[Offer], product: Offer, volume: int = 1) -> SaleTransaction:
     """Calculates the total profit from combining the items into the final product.
 
-    Examples include Barrows, Godswords, Dragonfire shields.
+    Examples include Godswords, Dragonfire shields.
 
     Parameters
     ----------
@@ -107,7 +116,7 @@ def combiner(parts: list[Offer], product: Offer, volume: int = 1) -> SaleTransac
     -------
     SaleTransaction
     """
-    cost = [volume * (part.lowest.price + 1) for part in parts]
+    cost = sum(volume * (part.lowest.price + 1) for part in parts)
     return SaleTransaction(
         item=product.item,
         full_buy_price=cost,
@@ -116,24 +125,48 @@ def combiner(parts: list[Offer], product: Offer, volume: int = 1) -> SaleTransac
     )
 
 
-def flip(item: Offer, volume: int = 1) -> SaleTransaction:
+def best_flip(items: list[Offer], volume: int = 1, top_n: int = 10) -> list[SaleTransaction]:
+    """Returns the best top n flips from
+
+    Parameters
+    ----------
+    items
+    volume
+    top_n
+
+    Returns
+    -------
+    list[SaleTransaction]
+    """
+    flips = [flip(item, volume) for item in items]
+    flips.sort(reverse=True)
+
+    return flips[0:top_n]
+
+
+def flip(offer: Offer, volume: int = 1) -> SaleTransaction:
     """Calculates the profit from buying at the lowest price and selling at the highest
 
     Parameters
     ----------
-    item: GrandExchange Offer
+    offer: GrandExchange Offer
     volume: int
 
     Returns
     -------
     SaleTransaction
     """
-    return SaleTransaction(
-        item=item.item,
-        full_buy_price=item.highest.price,
-        individual_sold_price=item.lowest.price,
-        volume=volume
-    )
+    try:
+        return SaleTransaction(
+            item=offer.item,
+            full_buy_price=offer.lowest.price + 1,
+            individual_sold_price=offer.highest.price - 1,
+            volume=volume
+        )
+    except TypeError as err:
+        if None in (offer.highest.price, offer.lowest.price):
+            raise PriceNotAvailableError(offer.item)
+        raise err
 
 
 ZAHURS_FEE = 200
@@ -186,3 +219,117 @@ def create_unfinished(herb: Offer, unfinished: Offer, volume: int) -> SaleTransa
 
 def crush(material: Offer, product: Offer, volume: int) -> SaleTransaction:
     return transform(material, product, volume, WESLEYS_FEE)
+
+
+def check_skill_level(func):
+    """Decorator to check if the provided skill level is valid"""
+
+    @functools.wraps(func)
+    def is_between_1_and_120(*args, **kwargs):
+        try:
+            level = kwargs["level"]
+        except KeyError:
+            level = inspect.signature(func).parameters.get("level").default
+
+        if not 1 <= level <= 120:
+            raise InvalidLevelError(level)
+        return func(*args, **kwargs)
+
+    return is_between_1_and_120
+
+
+@check_skill_level
+def repair_barrows(repaired: Offer, degraded: Offer, level: int = 1, volume: int = 1) -> SaleTransaction:
+    """Calculates the return of repairing a Barrows item
+
+    Repair costs are determined by using the repair bench in a player's home. Default
+    costs can be provided by supplying a smithing level of 1. The degraded item
+    must be the same as the repaired item otherwise an error will be raised.
+
+    Parameters
+    ----------
+    degraded: Offer
+        The item being repaired
+    repaired: Offer
+        The repaired version of the item
+    level: int
+        Smithing level of the player
+    volume:
+        Total volume of items being repaired and sold
+
+    Returns
+    -------
+    SaleTransaction
+
+    Raises:
+        IncorrectItemProvidedError: When the repair item does not match the degraded item
+    """
+    if degraded.item.name != repaired.item.name + " 0":
+        raise IncorrectItemProvidedError(degraded.item.name)
+
+    for _set in (ItemSet.from_config(brother) for brother in Barrows):
+        if found_key := _set.find_key(repaired.item.name):
+            break
+    else:
+        raise IncorrectItemProvidedError(repaired.item.name)
+
+    default_cost = REPAIR_BARROWS_COSTS[found_key]
+
+    repair_cost = (1 - (level / 200)) * default_cost * volume
+
+    return SaleTransaction(
+        item=repaired.item,
+        full_buy_price=degraded.lowest.price * volume + repair_cost + 1,
+        individual_sold_price=repaired.highest.price + 1,
+        volume=volume,
+    )
+
+
+@check_skill_level
+def repair_barrows_set(
+        repaired: list[Offer],
+        degraded: list[Offer],
+        set_: Offer,
+        level: int = 1,
+        volume: int = 1,
+) -> SaleTransaction:
+    """Calculates the return of repairing a barrows set and selling the combined set
+
+    Parameters
+    ----------
+    degraded: list[Offer]
+        The list of barrow items being repaired
+    repaired: list[Offer]
+        The list of repaired barrow items
+    set_: Offer
+        The combined set being made
+    level: int
+        Smithing level of the player
+    volume:
+        Total volume of items being repaired and sold
+
+    Returns
+    -------
+    SaleTransaction
+    """
+    sales: list[SaleTransaction] = []
+
+    names = [piece.item.name + " 0" for piece in repaired]
+    for piece in degraded:
+        try:
+            index = names.index(piece.item.name)
+        except ValueError:
+            raise ValueError("Degraded and repaired items do not match")
+
+        sales.append(
+            repair_barrows(repaired[index], piece, level, volume)
+        )
+
+    cost = sum(sale.full_buy_price for sale in sales)
+
+    return SaleTransaction(
+        item=set_.item,
+        full_buy_price=cost,
+        individual_sold_price=set_.highest.price - 1,
+        volume=volume
+    )
