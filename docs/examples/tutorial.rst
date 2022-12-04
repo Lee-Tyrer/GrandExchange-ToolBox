@@ -15,15 +15,19 @@ Combining items
 
 Herb cleaning
 =============
+.. literalinclude:: code/herb_cleaning.py
 
 Unfinished potions
 ==================
+.. literalinclude:: code/unf_potions.py
 
 Creating planks
 ===============
+.. literalinclude:: code/create_planks.py
 
 Crushing items
 ==============
+.. literalinclude:: code/crushing.py
 
 Repairing barrows
 =================
