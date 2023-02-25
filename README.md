@@ -15,7 +15,7 @@ pip install grandexchangetoolbox
 ```
 
 ### Example
-
+For more examples, please visit our documentation at https://grandexchange-toolbox.readthedocs.io/en/latest/.
 ```python
 import grandexchange
 
@@ -36,6 +36,19 @@ nature_rune = client.get_current_prices("Nature rune")[0]
 
 flip = grandexchange.flip(nature_rune, volume=1000)
 ```
+
+## Features
+* Python wrapper around the Oldschool Runescape Grand Exchange API 
+* Functions to run common money making approaches
+  * Instant flip
+  * Potion decanting
+  * Creating unfinished potions
+  * Herb cleaning
+  * Repairing barrows
+  * Combining items
+  * Bird nest crushing
+  * High alchemy
+  * Plank make
 
 ## License
 

@@ -1,7 +1,7 @@
 import functools
 import inspect
 
-from grandexchange.items import Offer, Timeseries, ItemSet, Barrows, Price
+from grandexchange.items import Offer, Timeseries, Barrows, Price
 from grandexchange.constants import SAWMILL_COSTS, PLANK_MAKE_COSTS, REPAIR_BARROWS_COSTS
 from grandexchange.transactions import SaleTransaction
 from grandexchange.exceptions import (
