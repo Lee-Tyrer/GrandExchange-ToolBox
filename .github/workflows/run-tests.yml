@@ -36,7 +36,7 @@ jobs:
       - name: install poetry
         uses: snok/install-poetry@v1
         with:
-          version: "$POETRY_VERSION"
+          version: echo "$POETRY_VERSION"
           virtualenvs-create: true
           virtualenvs-in-project: true
 
