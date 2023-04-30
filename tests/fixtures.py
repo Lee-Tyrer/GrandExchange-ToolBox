@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from grandexchange.items import Price, GrandExchangeItem, GrandExchangeItems, Timeseries, ItemSet, Offer
+from grandexchange.items import Price, GrandExchangeItem, GrandExchangeItems, Timeseries, Barrows, Offer
 
 TIMESTAMP = datetime.now()
 
