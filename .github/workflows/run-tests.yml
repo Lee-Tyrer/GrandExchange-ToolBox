@@ -3,9 +3,6 @@
 
 name: Python application
 
-env:
-  POETRY_VERSION: 1.4.2
-
 on:
   push:
     branches: [ "main" ]
@@ -31,12 +28,12 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.local
-          key: echo "poetry-$POETRY_VERSION"
+          key: poetry-1.4.2
 
       - name: install poetry
         uses: snok/install-poetry@v1
         with:
-          version: echo "$POETRY_VERSION"
+          version: 1.4.2
           virtualenvs-create: true
           virtualenvs-in-project: true
 
