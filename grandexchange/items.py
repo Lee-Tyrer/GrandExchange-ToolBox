@@ -1,9 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import yaml
-import pkgutil
+from dataclasses import dataclass
 
-from enum import Enum
+from grandexchange.constants import BARROWS
+
 from pydantic import BaseModel, Field
 from collections import defaultdict
 from fuzzywuzzy import fuzz
@@ -124,28 +122,12 @@ class Timeseries(BaseModel):
     timestep: int = None
 
     @property
-    def highest_price_array(self):
-        return np.array([x.price for x in self.highest], dtype=np.float)
+    def time_range(self) -> tuple[int, int]:
+        timestamps = [x.timestamp for x in self.highest]
+        return min(timestamps), max(timestamps)
 
     @property
-    def lowest_price_array(self):
-        return np.array([x.price for x in self.lowest], dtype=np.float)
-
-    @property
-    def highest_timestamp_array(self):
-        return np.array([x.timestamp for x in self.highest], dtype=np.float)
-
-    @property
-    def lowest_timestamp_array(self):
-        return np.array([x.timestamp for x in self.lowest], dtype=np.float)
-
-    @property
-    def time_range(self):
-        timestamps = self.highest_timestamp_array
-        return (max(timestamps) - min(timestamps)).total_seconds()
-
-    @property
-    def total_volume(self):
+    def total_volume(self) -> int:
         return sum(x.volume for x in self.highest)
 
     def as_offers(self) -> list[Offer]:
@@ -159,65 +141,33 @@ class Timeseries(BaseModel):
         )
 
 
-class Barrows(Enum):
-    Dharoks = "Dharoks"
-    Karils = "Karils"
-    Ahrims = "Ahrims"
-    Guthans = "Guthans"
-    Torags = "Torags"
-    Veracs = "Veracs"
-
-
-class ItemSet(BaseModel):
-    weapon: str | None
+@dataclass
+class Barrows:
+    name: str
     helm: str
     body: str
-    shield: str | None
     legs: str
+    weapon: str
     set: str
 
-    @property
-    def repaired_names(self):
-        return [item for item in self.dict(exclude={"set"}).values() if item is not None]
+    def pieces(self):
+        return {self.helm, self.body, self.legs, self.weapon}
 
-    @property
-    def broken_pieces_name(self):
-        return [item + " 0" for item in self.dict(exclude={"set"}).values() if item is not None]
+    def degraded(self):
+        return {item + " 0" for item in self.pieces()}
 
     @classmethod
-    def from_config(cls, name: Barrows):
-        """
+    def load(cls, name: str):
+        try:
+            barrows = BARROWS[name]
+        except KeyError as err:
+            raise KeyError(f"must provide a name from {BARROWS.keys()}")
 
-        Parameters
-        ----------
-        name: str
-            The name of the Barrow's brother to retrieve the data for
-
-        Returns
-        -------
-        ItemSet
-        """
-        stream = pkgutil.get_data(__name__, "static/sets.yaml")
-        obj = yaml.safe_load(stream)
-        for key, val in obj.items():
-            if name.value == key:
-                return cls(**val)
-
-    def find_key(self, item: str):
-        return next(
-            (key for key, name in self.dict().items() if name == item),
-            None
+        return Barrows(
+            name,
+            barrows["helm"],
+            barrows["body"],
+            barrows["legs"],
+            barrows["weapon"],
+            barrows["set"],
         )
-
-
-def plot_prices(timeseries: Timeseries):
-    x = [p.timestamp for p in timeseries.highest]
-    high = [i.price for i in timeseries.highest]
-    low = [i.price for i in timeseries.lowest]
-
-    plt.plot(x, low, label="High price")
-    plt.plot(x, high, label="Low price")
-    plt.title(f"Time series from {min(x)} to {max(x)}")
-    plt.xlabel("Timestamps")
-    plt.ylabel("Price (gp)")
-    plt.show()
