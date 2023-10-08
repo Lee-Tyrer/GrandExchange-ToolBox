@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from grandexchange.items import Price, GrandExchangeItem, GrandExchangeItems, Timeseries, ItemSet, Offer
+from grandexchange.items import Price, GrandExchangeItem, GrandExchangeItems, Timeseries, Offer
 
 TIMESTAMP = datetime.now()
 
@@ -100,30 +100,6 @@ def complete_timeseries():
         item=an_item_type_1(),
         highest=three_list_price(),
         lowest=three_list_price_alt_prices()
-    )
-
-
-@pytest.fixture
-def item_set_without_nones():
-    return ItemSet(
-        weapon="weapon",
-        helm="helm",
-        body="body",
-        shield="shield",
-        legs="legs",
-        set="set"
-    )
-
-
-@pytest.fixture
-def item_set_with_nones():
-    return ItemSet(
-        weapon="weapon",
-        helm="helm",
-        body="body",
-        shield=None,
-        legs="legs",
-        set="set"
     )
 
 

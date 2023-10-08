@@ -1,8 +1,8 @@
 import functools
 import inspect
 
-from grandexchange.items import Offer, Timeseries, ItemSet, Barrows, Price
-from grandexchange.constants import SAWMILL_COSTS, PLANK_MAKE_COSTS, REPAIR_BARROWS_COSTS
+from grandexchange.items import Offer, Barrows
+from grandexchange.constants import SAWMILL_COSTS, PLANK_MAKE_COSTS, BARROWS, REPAIR_BARROWS_COSTS
 from grandexchange.transactions import SaleTransaction
 from grandexchange.exceptions import (
     ItemNotFoundError,
@@ -267,13 +267,15 @@ def repair_barrows(repaired: Offer, degraded: Offer, level: int = 1, volume: int
     if degraded.item.name != repaired.item.name + " 0":
         raise IncorrectItemProvidedError(degraded.item.name)
 
-    for _set in (ItemSet.from_config(brother) for brother in Barrows):
-        if found_key := _set.find_key(repaired.item.name):
-            break
-    else:
-        raise IncorrectItemProvidedError(repaired.item.name)
+    for brother in BARROWS.values():
+        for type_, equipment in brother.items():
+            if repaired.item.name == equipment:
+                item = type_
 
-    default_cost = REPAIR_BARROWS_COSTS[found_key]
+    if item is None:
+        raise IncorrectItemProvidedError(f"{repaired.item.name} is not a valid barrows item")
+
+    default_cost = REPAIR_BARROWS_COSTS[item]
 
     repair_cost = (1 - (level / 200)) * default_cost * volume
 

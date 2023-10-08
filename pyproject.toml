@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "grandexchange-toolbox"
+version = "0.1.0"
+description = "A package to interact with the OSRS Grand Exchange API"
+authors = ["LeeTyrer <lee.4lifee@gmail.com>"]
+readme = "README.md"
+packages = [{include = "grandexchange"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fuzzywuzzy = "^0.18.0"
+PyYAML = "^6.0"
+pydantic = "^1.10.7"
+requests = "^2.29.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
